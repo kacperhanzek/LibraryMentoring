@@ -1,4 +1,4 @@
-package com.library.LibraryExercise;
+package com.library.libraryexercise.controller.dto;
 
 public class Book {
     private String title;
