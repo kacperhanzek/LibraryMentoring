@@ -9,7 +9,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.library</groupId>
-    <artifactId>LibraryExercise</artifactId>
+    <artifactId>libraryexercise</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>LibraryExercise</name>
     <description>Library demo project for mentoring</description>
@@ -42,6 +42,11 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.1.2</version> <!-- Lub odpowiednia wersja -->
             </plugin>
         </plugins>
     </build>
