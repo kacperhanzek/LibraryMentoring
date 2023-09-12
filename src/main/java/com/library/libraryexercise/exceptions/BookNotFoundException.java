@@ -1,4 +1,4 @@
-package com.library.libraryexercise.controller.exceptions;
+package com.library.libraryexercise.exceptions;
 
 public class BookNotFoundException extends RuntimeException{
 
