@@ -7,12 +7,15 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
+
 @Service
 public class LibraryServiceImpl implements LibraryService {
 
-    private final Map<String, Book> books = new HashMap<>() {{
-        put("Harry Potter", new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300));
-    }};
+    private final Map<String, Book> books = new HashMap<>();
+
+    public LibraryServiceImpl() {
+        books.put("Harry Potter", new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300));
+    }
 
     @Override
     public Book getBook(String title, String author) {
@@ -25,7 +28,7 @@ public class LibraryServiceImpl implements LibraryService {
     @Override
     public Book addBook(String title, String author, String genre, int pageCount) {
         if (books.containsKey(title)) {
-            throw new IllegalArgumentException("Książka o tytule" + title + " jest już w bazie");
+            throw new IllegalArgumentException("Książka o tytule " + title + " jest już w bazie");
         }
 
         Book newBook = new Book(title, author, genre, pageCount);
@@ -39,6 +42,4 @@ public class LibraryServiceImpl implements LibraryService {
     public void delBook(String title, String author) {
         books.remove(title);
     }
-
-
 }
