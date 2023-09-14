@@ -3,6 +3,7 @@ package com.library.libraryexercise.controller;
 
 import com.library.libraryexercise.controller.dto.Book;
 import com.library.libraryexercise.controller.exceptions.BookNotFoundException;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -15,7 +16,7 @@ import static org.springframework.http.HttpStatus.CREATED;
 public class LibraryController {
 
     private final Map<String, Book> books = new HashMap<>() {{
-        put("Harry Potter", new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300));
+        put("Harry Potter i więzień Azkabanu", new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300));
     }};;
 
     @GetMapping("/books/{title}")
@@ -27,21 +28,19 @@ public class LibraryController {
     }
 
     @PutMapping("/books/{title}")
-    public Book addBook(@PathVariable String title,
-                        @RequestParam String author,
-                        @RequestParam String genre,
-                        @RequestParam int pageCount) {
+    public ResponseEntity<Book> addBook(@PathVariable String title,
+                                        @RequestParam String author,
+                                        @RequestParam String genre,
+                                        @RequestParam int pageCount) {
         if (books.containsKey(title)) {
-            throw new IllegalArgumentException("Książka o tytule" + title + " jest już w bazie");
+            return ResponseEntity.badRequest().body(null);
         }
 
         Book newBook = new Book(title, author, genre, pageCount);
 
         books.put(title, newBook);
 
-        return newBook;
-
-
+        return ResponseEntity.ok(newBook);
     }
 
     @DeleteMapping("books/{title}")

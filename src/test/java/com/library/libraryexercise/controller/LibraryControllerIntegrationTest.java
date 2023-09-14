@@ -5,14 +5,16 @@ import com.library.libraryexercise.controller.dto.Book;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
-@WebMvcTest
-class LibraryControllerTest {
+@SpringBootTest
+@AutoConfigureMockMvc
+class LibraryControllerIntegrationTest {
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -61,7 +63,7 @@ class LibraryControllerTest {
 
 	@Test
 	public void testGetBookWhenBookExists() throws Exception {
-		mockMvc.perform(MockMvcRequestBuilders.get("/library/books/{title}", "Harry Potter i więzień Azkabanu")
+		mockMvc.perform(MockMvcRequestBuilders.get("/library/books/{title}", "Harry Potter")
 						.param("author", "J.K. Rowling")
 						.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(MockMvcResultMatchers.status().isOk())
