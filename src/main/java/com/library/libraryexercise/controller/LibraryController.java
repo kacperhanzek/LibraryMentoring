@@ -6,47 +6,59 @@ import com.library.libraryexercise.controller.exceptions.BookNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.springframework.http.HttpStatus.CREATED;
+import java.util.*;
 
 @RestController
 @RequestMapping("/library")
 public class LibraryController {
 
-    private final Map<String, Book> books = new HashMap<>() {{
-        put("Harry Potter i więzień Azkabanu", new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300));
-    }};;
+    private final List<Book> books = new ArrayList<>();
+
+    public LibraryController() {
+        books.add(new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300));
+    }
 
     @GetMapping("/books/{title}")
     public Book getBook(@PathVariable String title, @RequestParam String author) {
-        if (!books.containsKey(title)) {
+        Optional<Book> optionalBook = books.stream()
+                .filter(book -> book.getTitle().equals(title))
+                .findFirst();
+
+        if (optionalBook.isPresent()) {
+            return optionalBook.get();
+        } else {
             throw new BookNotFoundException("Książka o tym tytule: " + title + " nie znajduje się w bazie");
         }
-        return books.get(title);
     }
-
     @PutMapping("/books/{title}")
     public ResponseEntity<Book> addBook(@PathVariable String title,
                                         @RequestParam String author,
                                         @RequestParam String genre,
                                         @RequestParam int pageCount) {
-        if (books.containsKey(title)) {
-            return ResponseEntity.badRequest().body(null);
+        for (Book existingBook : books) {
+            if (existingBook.getTitle().equals(title)) {
+                return ResponseEntity.badRequest().body(null);
+            }
         }
 
         Book newBook = new Book(title, author, genre, pageCount);
 
-        books.put(title, newBook);
+        books.add(newBook);
 
         return ResponseEntity.ok(newBook);
     }
 
-    @DeleteMapping("books/{title}")
-    @ResponseStatus(CREATED)
-    public String delBook(@PathVariable String title, @RequestParam String author) {
-        books.remove(title);
-        return "Książka o tym tytule: " + title + " została usunięta";
+    @DeleteMapping("/books/{title}")
+    public ResponseEntity<String> delBook(@PathVariable String title, @RequestParam String author) {
+        Optional<Book> bookToRemove = books.stream()
+                .filter(book -> book.getTitle().equals(title) && book.getAuthor().equals(author))
+                .findFirst();
+
+        if (bookToRemove.isPresent()) {
+            books.remove(bookToRemove.get());
+            return ResponseEntity.ok("Książka o tytule: " + title + " autorstwa " + author + " została usunięta");
+        } else {
+            throw new BookNotFoundException("Książka o tytule: " + title + " autorstwa " + author + " nie znajduje się w bazie");
+        }
     }
 }

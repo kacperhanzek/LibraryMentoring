@@ -63,7 +63,7 @@ class LibraryControllerIntegrationTest {
 
 	@Test
 	public void testGetBookWhenBookExists() throws Exception {
-		mockMvc.perform(MockMvcRequestBuilders.get("/library/books/{title}", "Harry Potter")
+		mockMvc.perform(MockMvcRequestBuilders.get("/library/books/{title}", "Harry Potter i więzień Azkabanu")
 						.param("author", "J.K. Rowling")
 						.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(MockMvcResultMatchers.status().isOk())
