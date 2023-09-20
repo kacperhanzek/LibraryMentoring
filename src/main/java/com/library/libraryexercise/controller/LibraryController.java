@@ -20,25 +20,22 @@ public class LibraryController {
 
     @GetMapping("/books/{title}")
     public Book getBook(@PathVariable String title, @RequestParam String author) {
-        Optional<Book> optionalBook = books.stream()
+        return books.stream()
                 .filter(book -> book.getTitle().equals(title))
-                .findFirst();
-
-        if (optionalBook.isPresent()) {
-            return optionalBook.get();
-        } else {
-            throw new BookNotFoundException("Książka o tym tytule: " + title + " nie znajduje się w bazie");
-        }
+                .findFirst()
+                .orElseThrow(() -> new BookNotFoundException("Książka o tym tytule: " + title + " nie znajduje się w bazie"));
     }
+
     @PutMapping("/books/{title}")
     public ResponseEntity<Book> addBook(@PathVariable String title,
                                         @RequestParam String author,
                                         @RequestParam String genre,
                                         @RequestParam int pageCount) {
-        for (Book existingBook : books) {
-            if (existingBook.getTitle().equals(title)) {
-                return ResponseEntity.badRequest().body(null);
-            }
+        boolean exists = books.stream()
+                .anyMatch((book -> book.getTitle().equals(title)));
+
+        if (exists) {
+            return ResponseEntity.badRequest().body(null);
         }
 
         Book newBook = new Book(title, author, genre, pageCount);
@@ -51,14 +48,12 @@ public class LibraryController {
     @DeleteMapping("/books/{title}")
     public ResponseEntity<String> delBook(@PathVariable String title, @RequestParam String author) {
         Optional<Book> bookToRemove = books.stream()
-                .filter(book -> book.getTitle().equals(title) && book.getAuthor().equals(author))
+                .filter(book -> book.getTitle().equals(title))
+                .filter(book -> book.getAuthor().equals(author))
                 .findFirst();
 
-        if (bookToRemove.isPresent()) {
-            books.remove(bookToRemove.get());
-            return ResponseEntity.ok("Książka o tytule: " + title + " autorstwa " + author + " została usunięta");
-        } else {
-            throw new BookNotFoundException("Książka o tytule: " + title + " autorstwa " + author + " nie znajduje się w bazie");
-        }
+        bookToRemove.ifPresent(books::remove);
+
+        return ResponseEntity.ok("Książka o tytule: " + title + " autorstwa " + author + " została usunięta");
     }
 }
