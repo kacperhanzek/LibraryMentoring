@@ -3,51 +3,57 @@ package com.library.libraryexercise.controller;
 
 import com.library.libraryexercise.controller.dto.Book;
 import com.library.libraryexercise.controller.exceptions.BookNotFoundException;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.springframework.http.HttpStatus.CREATED;
+import java.util.*;
 
 @RestController
 @RequestMapping("/library")
 public class LibraryController {
 
-    private final Map<String, Book> books = new HashMap<>() {{
-        put("Harry Potter", new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300));
-    }};;
+    private final List<Book> books = new ArrayList<>();
+
+    public LibraryController() {
+        books.add(new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300));
+    }
 
     @GetMapping("/books/{title}")
     public Book getBook(@PathVariable String title, @RequestParam String author) {
-        if (!books.containsKey(title)) {
-            throw new BookNotFoundException("Książka o tym tytule: " + title + " nie znajduje się w bazie");
-        }
-        return books.get(title);
+        return books.stream()
+                .filter(book -> book.getTitle().equals(title))
+                .findFirst()
+                .orElseThrow(() -> new BookNotFoundException("Książka o tym tytule: " + title + " nie znajduje się w bazie"));
     }
 
     @PutMapping("/books/{title}")
-    public Book addBook(@PathVariable String title,
-                        @RequestParam String author,
-                        @RequestParam String genre,
-                        @RequestParam int pageCount) {
-        if (books.containsKey(title)) {
-            throw new IllegalArgumentException("Książka o tytule" + title + " jest już w bazie");
+    public ResponseEntity<Book> addBook(@PathVariable String title,
+                                        @RequestParam String author,
+                                        @RequestParam String genre,
+                                        @RequestParam int pageCount) {
+        boolean exists = books.stream()
+                .anyMatch((book -> book.getTitle().equals(title)));
+
+        if (exists) {
+            return ResponseEntity.badRequest().body(null);
         }
 
         Book newBook = new Book(title, author, genre, pageCount);
 
-        books.put(title, newBook);
+        books.add(newBook);
 
-        return newBook;
-
-
+        return ResponseEntity.ok(newBook);
     }
 
-    @DeleteMapping("books/{title}")
-    @ResponseStatus(CREATED)
-    public String delBook(@PathVariable String title, @RequestParam String author) {
-        books.remove(title);
-        return "Książka o tym tytule: " + title + " została usunięta";
+    @DeleteMapping("/books/{title}")
+    public ResponseEntity<String> delBook(@PathVariable String title, @RequestParam String author) {
+        Optional<Book> bookToRemove = books.stream()
+                .filter(book -> book.getTitle().equals(title))
+                .filter(book -> book.getAuthor().equals(author))
+                .findFirst();
+
+        bookToRemove.ifPresent(books::remove);
+
+        return ResponseEntity.ok("Książka o tytule: " + title + " autorstwa " + author + " została usunięta");
     }
 }

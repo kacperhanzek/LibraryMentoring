@@ -12,7 +12,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BookNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public String handleMyCustomException(BookNotFoundException ex) {
+    public String handleBookNotFoundException(BookNotFoundException ex) {
+        return ex.getMessage();
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public String handleIllegalArgumentException(IllegalArgumentException ex) {
         return ex.getMessage();
     }
 }
