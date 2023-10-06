@@ -25,29 +25,26 @@ public class LibraryService {
                 .orElseThrow(() -> new BookNotFoundException("Książka o tym tytule: " + title + " nie znajduje się w bazie"));
     }
 
-    public ResponseEntity<Book> addBook(String title, String author, String genre, int pageCount) {
+    public Optional<Book> addBook(String title, String author, String genre, int pageCount) {
         boolean exists = books.stream()
                 .anyMatch(book -> book.getTitle().equals(title));
 
         if (exists) {
-            return ResponseEntity.badRequest().body(null);
+            return Optional.empty();
         }
 
         Book newBook = new Book(title, author, genre, pageCount);
-
         books.add(newBook);
 
-        return ResponseEntity.ok(newBook);
+        return Optional.of(newBook);
     }
 
-    public ResponseEntity<String> delBook(String title, String author) {
+    public void delBook(String title, String author) {
         Optional<Book> bookToRemove = books.stream()
                 .filter(book -> book.getTitle().equals(title))
                 .filter(book -> book.getAuthor().equals(author))
                 .findFirst();
 
         bookToRemove.ifPresent(books::remove);
-
-        return ResponseEntity.ok("Książka o tytule: " + title + " autorstwa " + author + " została usunięta");
     }
 }

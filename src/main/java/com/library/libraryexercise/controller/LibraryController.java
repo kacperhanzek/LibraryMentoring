@@ -26,15 +26,16 @@ public class LibraryController {
     }
 
     @PutMapping("/books/{title}")
-    public ResponseEntity<Book> addBook(@PathVariable String title,
-                                        @RequestParam String author,
-                                        @RequestParam String genre,
-                                        @RequestParam int pageCount) {
+    public Optional<Book> addBook(@PathVariable String title,
+                                  @RequestParam String author,
+                                  @RequestParam String genre,
+                                  @RequestParam int pageCount) {
         return libraryService.addBook(title, author, genre, pageCount);
     }
 
     @DeleteMapping("/books/{title}")
     public ResponseEntity<String> delBook(@PathVariable String title, @RequestParam String author) {
-        return libraryService.delBook(title, author);
+        libraryService.delBook(title, author);
+        return ResponseEntity.ok("Książka o tytule: " + title + " autorstwa " + author + " została usunięta");
     }
 }

@@ -9,17 +9,25 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest
 class LibraryControllerTest {
 
     @Autowired
-    private LibraryController libraryController;
+    private MockMvc mockMvc;
 
     @MockBean
     private LibraryService libraryService;
@@ -30,33 +38,32 @@ class LibraryControllerTest {
     @Test
     public void testAddBookSuccess() throws Exception {
         Book newBook = new Book("Nowa Książka", "Autor Testowy", "Gatunek", 200);
-        ResponseEntity<Book> responseEntity = ResponseEntity.ok(newBook);
-        when(libraryService.addBook("Nowa Książka", "Autor Testowy", "Gatunek", 200)).thenReturn(responseEntity);
+        Optional<Book> optionalBook = Optional.of(newBook);
 
-        ResponseEntity<Book> response = libraryController.addBook("Nowa Książka", "Autor Testowy", "Gatunek", 200);
+        when(libraryService.addBook("Nowa Książka", "Autor Testowy", "Gatunek", 200))
+                .thenReturn(optionalBook);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().getTitle()).isEqualTo("Nowa Książka");
-        assertThat(response.getBody().getAuthor()).isEqualTo("Autor Testowy");
-        assertThat(response.getBody().getGenre()).isEqualTo("Gatunek");
-        assertThat(response.getBody().getPageCount()).isEqualTo(200);
+        mockMvc.perform(post("/books")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newBook)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Nowa Książka"))
+                .andExpect(jsonPath("$.author").value("Autor Testowy"))
+                .andExpect(jsonPath("$.genre").value("Gatunek"))
+                .andExpect(jsonPath("$.pageCount").value(200));
     }
 
     @Test
     public void testAddBookDuplicateTitle() throws Exception {
         Book existingBook = new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300);
-        ResponseEntity<Book> responseEntity = ResponseEntity.badRequest().body(null);
+        Optional<Book> optionalBook = Optional.empty();
         when(libraryService.addBook("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300))
-                .thenReturn(responseEntity);
+                .thenReturn(optionalBook);
 
-        ResponseEntity<Book> response = libraryController.addBook(
-                "Harry Potter i więzień Azkabanu",
-                "J.K. Rowling",
-                "Fantasy",
-                300
-        );
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        mockMvc.perform(post("/books")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(existingBook)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -64,26 +71,24 @@ class LibraryControllerTest {
         Book existingBook = new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300);
         when(libraryService.getBook("Harry Potter i więzień Azkabanu", "J.K. Rowling")).thenReturn(existingBook);
 
-        Book response = libraryController.getBook("Harry Potter i więzień Azkabanu", "J.K. Rowling");
-
-        assertThat(response.getTitle()).isEqualTo("Harry Potter i więzień Azkabanu");
-        assertThat(response.getAuthor()).isEqualTo("J.K. Rowling");
-        assertThat(response.getGenre()).isEqualTo("Fantasy");
-        assertThat(response.getPageCount()).isEqualTo(300);
+        mockMvc.perform(get("/books/Harry Potter i więzień Azkabanu/J.K. Rowling"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Harry Potter i więzień Azkabanu"))
+                .andExpect(jsonPath("$.author").value("J.K. Rowling"))
+                .andExpect(jsonPath("$.genre").value("Fantasy"))
+                .andExpect(jsonPath("$.pageCount").value(300));
     }
 
     @Test
-    public void testGetBookWhenBookDoesNotExist() {
+    public void testGetBookWhenBookDoesNotExist() throws Exception {
         String nonExistentTitle = "Nonexistent Book";
         String nonExistentAuthor = "Unknown Author";
 
         when(libraryService.getBook(nonExistentTitle, nonExistentAuthor))
                 .thenThrow(new BookNotFoundException("Książka o tytule: " + nonExistentTitle + " autorstwa " + nonExistentAuthor + " nie znajduje się w bazie"));
 
-        BookNotFoundException exception = assertThrows(BookNotFoundException.class,
-                () -> libraryController.getBook(nonExistentTitle, nonExistentAuthor));
-
-        assertThat(exception.getMessage())
-                .isEqualTo("Książka o tytule: " + nonExistentTitle + " autorstwa " + nonExistentAuthor + " nie znajduje się w bazie");
+        mockMvc.perform(get("/books/" + nonExistentTitle + "/" + nonExistentAuthor))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Książka o tytule: " + nonExistentTitle + " autorstwa " + nonExistentAuthor + " nie znajduje się w bazie"));
     }
 }
