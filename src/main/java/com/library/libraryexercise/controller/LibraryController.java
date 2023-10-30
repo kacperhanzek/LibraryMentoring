@@ -2,7 +2,11 @@ package com.library.libraryexercise.controller;
 
 
 import com.library.libraryexercise.controller.dto.Book;
-import com.library.libraryexercise.controller.exceptions.BookNotFoundException;
+import com.library.libraryexercise.controller.dto.BookRequest;
+import com.library.libraryexercise.controller.dto.CreateBookRequest;
+import com.library.libraryexercise.service.LibraryService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,48 +16,31 @@ import java.util.*;
 @RequestMapping("/library")
 public class LibraryController {
 
-    private final List<Book> books = new ArrayList<>();
+    private final LibraryService libraryService;
 
-    public LibraryController() {
-        books.add(new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300));
+    @Autowired
+    public LibraryController(LibraryService libraryService) {
+        this.libraryService = libraryService;
     }
 
-    @GetMapping("/books/{title}")
-    public Book getBook(@PathVariable String title, @RequestParam String author) {
-        return books.stream()
-                .filter(book -> book.getTitle().equals(title))
-                .findFirst()
-                .orElseThrow(() -> new BookNotFoundException("Książka o tym tytule: " + title + " nie znajduje się w bazie"));
+    @GetMapping("/books")
+    public Book getBook(@RequestParam String title, @RequestParam String author) {
+        BookRequest request = new BookRequest();
+        request.setTitle(title);
+        request.setAuthor(author);
+        return libraryService.getBook(request);
     }
 
-    @PutMapping("/books/{title}")
-    public ResponseEntity<Book> addBook(@PathVariable String title,
-                                        @RequestParam String author,
-                                        @RequestParam String genre,
-                                        @RequestParam int pageCount) {
-        boolean exists = books.stream()
-                .anyMatch((book -> book.getTitle().equals(title)));
-
-        if (exists) {
-            return ResponseEntity.badRequest().body(null);
-        }
-
-        Book newBook = new Book(title, author, genre, pageCount);
-
-        books.add(newBook);
-
-        return ResponseEntity.ok(newBook);
+    @PostMapping("/books")
+    public ResponseEntity<Book> addBook(@RequestBody CreateBookRequest request) {
+        Optional<Book> book = libraryService.addBook(request);
+        return book.map(newBook -> ResponseEntity.status(HttpStatus.OK).body(newBook))
+                .orElseGet(() -> ResponseEntity.badRequest().build());
     }
 
     @DeleteMapping("/books/{title}")
     public ResponseEntity<String> delBook(@PathVariable String title, @RequestParam String author) {
-        Optional<Book> bookToRemove = books.stream()
-                .filter(book -> book.getTitle().equals(title))
-                .filter(book -> book.getAuthor().equals(author))
-                .findFirst();
-
-        bookToRemove.ifPresent(books::remove);
-
+        libraryService.delBook(title, author);
         return ResponseEntity.ok("Książka o tytule: " + title + " autorstwa " + author + " została usunięta");
     }
 }

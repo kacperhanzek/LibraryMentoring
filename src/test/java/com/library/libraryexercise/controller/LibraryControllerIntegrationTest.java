@@ -2,82 +2,94 @@ package com.library.libraryexercise.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.library.libraryexercise.controller.dto.Book;
-import org.junit.jupiter.api.BeforeEach;
+import com.library.libraryexercise.controller.dto.BookRequest;
+import com.library.libraryexercise.controller.dto.CreateBookRequest;
+import com.library.libraryexercise.controller.exceptions.BookNotFoundException;
+import com.library.libraryexercise.service.LibraryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.test.web.servlet.ResultActions;
+
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
+@DirtiesContext
 @AutoConfigureMockMvc
 class LibraryControllerIntegrationTest {
 
-	@Autowired
-	private MockMvc mockMvc;
+    @Autowired
+    private MockMvc mockMvc;
 
-	@Autowired
-	private ObjectMapper objectMapper;
+    @Autowired
+    private ObjectMapper objectMapper;
 
-	@BeforeEach
-	public void setUp() {
+    @Test
+    public void testAddBookSuccess() throws Exception {
+        Book newBook = new Book("Nowa Książka", "Autor Testowy", "Gatunek", 200);
 
-	}
+        ResultActions resultActions = mockMvc.perform(post("/library/books")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(newBook)));
 
-	@Test
-	public void testAddBookSuccess() throws Exception {
-		Book newBook = new Book("Nowa Książka", "Autor Testowy", "Gatunek", 200);
+        resultActions
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Nowa Książka"))
+                .andExpect(jsonPath("$.author").value("Autor Testowy"))
+                .andExpect(jsonPath("$.genre").value("Gatunek"))
+                .andExpect(jsonPath("$.pageCount").value(200));
+    }
 
-		String jsonRequest = objectMapper.writeValueAsString(newBook);
+    @Test
+    public void testAddBookDuplicateTitle() throws Exception {
+        Book existingBook = new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300);
+        CreateBookRequest request = new CreateBookRequest(existingBook.getTitle(), existingBook.getAuthor(), existingBook.getGenre(), existingBook.getPageCount());
 
-		mockMvc.perform(MockMvcRequestBuilders.put("/library/books/{title}", "Nowa Książka")
-						.param("author", "Autor Testowy")
-						.param("genre", "Gatunek")
-						.param("pageCount", "200")
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(jsonRequest))
-				.andExpect(MockMvcResultMatchers.status().isOk())
-				.andExpect(MockMvcResultMatchers.jsonPath("$.title").value("Nowa Książka"))
-				.andExpect(MockMvcResultMatchers.jsonPath("$.author").value("Autor Testowy"))
-				.andExpect(MockMvcResultMatchers.jsonPath("$.genre").value("Gatunek"))
-				.andExpect(MockMvcResultMatchers.jsonPath("$.pageCount").value(200));
-	}
+        mockMvc.perform(post("/library/books")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
+              .andExpect(status().isBadRequest());
+    }
 
-	@Test
-	public void testAddBookDuplicateTitle() throws Exception {
-		Book existingBook = new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300);
+    @Test
+    public void testGetBookWhenBookExists() throws Exception {
+        Book existingBook = new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling");
 
-		String jsonRequest = objectMapper.writeValueAsString(existingBook);
+        mockMvc.perform(post("/library/books")
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(existingBook)));
 
-		mockMvc.perform(MockMvcRequestBuilders.put("/library/books/{title}", "Harry Potter i więzień Azkabanu")
-						.param("author", "J.K. Rowling")
-						.param("genre", "Fantasy")
-						.param("pageCount", "300")
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(jsonRequest))
-				.andExpect(MockMvcResultMatchers.status().isBadRequest());
-	}
 
-	@Test
-	public void testGetBookWhenBookExists() throws Exception {
-		mockMvc.perform(MockMvcRequestBuilders.get("/library/books/{title}", "Harry Potter i więzień Azkabanu")
-						.param("author", "J.K. Rowling")
-						.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(MockMvcResultMatchers.status().isOk())
-				.andExpect(MockMvcResultMatchers.jsonPath("$.title").value("Harry Potter i więzień Azkabanu"))
-				.andExpect(MockMvcResultMatchers.jsonPath("$.author").value("J.K. Rowling"))
-				.andExpect(MockMvcResultMatchers.jsonPath("$.genre").value("Fantasy"))
-				.andExpect(MockMvcResultMatchers.jsonPath("$.pageCount").value(300));
-	}
+        mockMvc.perform(get("/library/books")
+                    .param("title", existingBook.getTitle())
+                    .param("author", existingBook.getAuthor()))
+              .andExpect(status().isOk())
+              .andExpect(jsonPath("$.title").value(existingBook.getTitle()))
+              .andExpect(jsonPath("$.author").value(existingBook.getAuthor()));
+    }
 
-	@Test
-	public void testGetBookWhenBookDoesNotExist() throws Exception {
-		mockMvc.perform(MockMvcRequestBuilders.get("/library/books/{title}", "Nonexistent Book")
-						.param("author", "Unknown Author")
-						.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(MockMvcResultMatchers.status().isNotFound());
-	}
+    @Test
+    public void testGetBookWhenBookDoesNotExist() throws Exception {
+        BookRequest request = new BookRequest();
+        request.setTitle("Nieistniejąca Książka");
+        request.setAuthor("Autor Testowy");
+
+
+        mockMvc.perform(get("/library/books")
+                    .param("title", request.getTitle())
+                    .param("author", request.getAuthor()))
+              .andExpect(status().isNotFound());
+    }
 }
