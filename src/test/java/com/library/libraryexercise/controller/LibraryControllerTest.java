@@ -2,28 +2,28 @@ package com.library.libraryexercise.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.library.libraryexercise.controller.dto.Book;
+import com.library.libraryexercise.controller.dto.BookRequest;
+import com.library.libraryexercise.controller.dto.CreateBookRequest;
 import com.library.libraryexercise.controller.exceptions.BookNotFoundException;
 import com.library.libraryexercise.service.LibraryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest
+@WebMvcTest(LibraryController.class)
 class LibraryControllerTest {
 
     @Autowired
@@ -37,15 +37,15 @@ class LibraryControllerTest {
 
     @Test
     public void testAddBookSuccess() throws Exception {
+        CreateBookRequest request = new CreateBookRequest("Nowa Książka", "Autor Testowy", "Gatunek", 200);
         Book newBook = new Book("Nowa Książka", "Autor Testowy", "Gatunek", 200);
         Optional<Book> optionalBook = Optional.of(newBook);
 
-        when(libraryService.addBook("Nowa Książka", "Autor Testowy", "Gatunek", 200))
-                .thenReturn(optionalBook);
+        when(libraryService.addBook(request)).thenReturn(optionalBook);
 
-        mockMvc.perform(post("/books")
+        mockMvc.perform(post("/library/books")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newBook)))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Nowa Książka"))
                 .andExpect(jsonPath("$.author").value("Autor Testowy"))
@@ -56,39 +56,52 @@ class LibraryControllerTest {
     @Test
     public void testAddBookDuplicateTitle() throws Exception {
         Book existingBook = new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300);
-        Optional<Book> optionalBook = Optional.empty();
-        when(libraryService.addBook("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300))
-                .thenReturn(optionalBook);
+        CreateBookRequest request = new CreateBookRequest(existingBook.getTitle(), existingBook.getAuthor(), existingBook.getGenre(), existingBook.getPageCount());
 
-        mockMvc.perform(post("/books")
+        when(libraryService.addBook(request))
+              .thenReturn(Optional.of(existingBook))
+              .thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/library/books")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
+              .andExpect(status().isOk());
+
+        mockMvc.perform(post("/library/books")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(existingBook)))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     public void testGetBookWhenBookExists() throws Exception {
-        Book existingBook = new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling", "Fantasy", 300);
-        when(libraryService.getBook("Harry Potter i więzień Azkabanu", "J.K. Rowling")).thenReturn(existingBook);
+        Book existingBook = new Book("Harry Potter i więzień Azkabanu", "J.K. Rowling");
+        BookRequest request = new BookRequest();
+        request.setTitle("Harry Potter i więzień Azkabanu");
+        request.setAuthor("J.K. Rowling");
 
-        mockMvc.perform(get("/books/Harry Potter i więzień Azkabanu/J.K. Rowling"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.title").value("Harry Potter i więzień Azkabanu"))
-                .andExpect(jsonPath("$.author").value("J.K. Rowling"))
-                .andExpect(jsonPath("$.genre").value("Fantasy"))
-                .andExpect(jsonPath("$.pageCount").value(300));
+        when(libraryService.getBook(request)).thenReturn(existingBook);
+
+        mockMvc.perform(get("/library/books")
+                    .param("title", request.getTitle())
+                    .param("author", request.getAuthor()))
+              .andExpect(status().isOk())
+              .andExpect(jsonPath("$.title").value("Harry Potter i więzień Azkabanu"))
+              .andExpect(jsonPath("$.author").value("J.K. Rowling"));
     }
 
     @Test
     public void testGetBookWhenBookDoesNotExist() throws Exception {
-        String nonExistentTitle = "Nonexistent Book";
-        String nonExistentAuthor = "Unknown Author";
+        BookRequest request = new BookRequest();
+        request.setTitle("Nieistniejąca Książka");
+        request.setAuthor("Autor Testowy");
 
-        when(libraryService.getBook(nonExistentTitle, nonExistentAuthor))
-                .thenThrow(new BookNotFoundException("Książka o tytule: " + nonExistentTitle + " autorstwa " + nonExistentAuthor + " nie znajduje się w bazie"));
+        when(libraryService.getBook(request)).thenThrow(new BookNotFoundException("asdf"));
 
-        mockMvc.perform(get("/books/" + nonExistentTitle + "/" + nonExistentAuthor))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Książka o tytule: " + nonExistentTitle + " autorstwa " + nonExistentAuthor + " nie znajduje się w bazie"));
+
+        mockMvc.perform(get("/library/books")
+                    .param("title", request.getTitle())
+                    .param("author", request.getAuthor()))
+              .andExpect(status().isNotFound());
     }
 }
